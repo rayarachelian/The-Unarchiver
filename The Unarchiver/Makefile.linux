@@ -1,0 +1,221 @@
+# Compilers and linkers
+
+OBJCC ?= `gnustep-config --variable=CC`
+CC ?=    `gnustep-config --variable=CC`
+CXX ?=   `gnustep-config --variable=CXX`
+LD ?= ld
+AR ?= ar
+SDK ?= -isysroot `gnustep-config --objc-flags` `gnustep-config --base-libs` 
+
+# Options for compilation
+
+GCC_OPTS =	-O2 \
+		-F../XADMaster \
+		-F../UniversalDetector \
+		-Wno-import \
+		-Wno-multichar \
+		-DIsLegacyVersion \
+		-I /usr/include/GNUstep -I /usr/include -I /usr/local/include
+
+
+OBJC_OPTS =	-std=gnu99 \
+		$(SDK) -I /usr/include/GNUstep -I /usr/include -I /usr/local/include -I /usr/include/x86_64-linux-gnu
+
+C_OPTS =	-std=gnu99 \
+		$(SDK) -I /usr/include -I /usr/local/include -I /usr/include/x86_64-linux-gnu
+
+CXX_OPTS =	$(SDK) -I /usr/include -I /usr/local/include -I /usr/include/x86_64-linux-gnu
+
+AUTODEPENDENCY_CFLAGS=-MMD -MF$(@:.o=.d) -MT$@
+
+ALL_OBJCFLAGS = $(OBJC_OPTS) $(GCC_OPTS) $(OBJCFLAGS)
+ALL_CFLAGS = $(C_OPTS) $(GCC_OPTS) $(CFLAGS)
+ALL_CXXFLAGS = $(CXX_OPTS) $(GCC_OPTS) $(CXXFLAGS)
+
+# Options for linking
+
+LIBS =	-framework Cocoa \
+	-framework Carbon \
+	-F../XADMaster \
+	-framework XADMaster \
+	-F../UniversalDetector \
+	-framework UniversalDetector \
+	-lobjc
+
+ALL_LDFLAGS =	-march \
+		$(SDK) \
+		$(LDFLAGS)
+
+# Paths
+
+SOURCE_DIR = .
+BUILD_DIR = Build
+
+# Source files
+
+OBJC_FILES =	CSFileTypeList.m \
+		main.m \
+		TUArchiveController.m \
+		TUArchiveTaskView.m \
+		TUCancelButton.m \
+		TUController.m \
+		TUDockTileView.m \
+		TUEncodingPopUp.m \
+		TUTaskListView.m \
+		TUTaskQueue.m
+
+C_FILES =
+
+CXX_FILES =
+
+# Object files
+
+OBJS =	$(OBJC_FILES:%.m=$(BUILD_DIR)/%.o) \
+	$(C_FILES:%.c=$(BUILD_DIR)/%.o) \
+	$(CXX_FILES:%.cpp=$(BUILD_DIR)/%.o)
+
+# App
+
+APP_NAME = The\ Unarchiver
+APP_IDENTIFIER = cx.c3.theunarchiver
+
+APP_FILES = $(APP_NAME).app
+
+RESOURCE_FILES =	de.lproj \
+			en.lproj \
+			es.lproj \
+			fr.lproj \
+			it.lproj \
+			ja.lproj \
+			lv.lproj \
+			nb.lproj \
+			pl.lproj \
+			pt-PT.lproj \
+			ru.lproj \
+			tr.lproj \
+			ar.lproj \
+			zh-Hans.lproj \
+			bg.lproj \
+			pt-BR.lproj \
+			nl.lproj \
+			hu.lproj \
+			ProgressView.nib \
+			WaitView.nib \
+			close_hover.png \
+			close_normal.png \
+			close_press.png \
+			error.png
+ICON_FILES =	7z.icns \
+		ace.icns \
+		adf.icns \
+		adz.icns \
+		amiga.icns \
+		archive.icns \
+		bin.icns \
+		bz2.icns \
+		cab.icns \
+		cbr.icns \
+		cbz.icns \
+		cpio.icns \
+		dd.icns \
+		dms.icns \
+		exe.icns \
+		gtar.icns \
+		gz.icns \
+		hqx.icns \
+		jar.icns \
+		lha.icns \
+		rar.icns \
+		rpm.icns \
+		sea.icns \
+		sit.icns \
+		tar.icns \
+		unarchiver.icns \
+		z.icns \
+		zip.icns
+
+# Compilation rules
+
+all: $(APP_FILES)
+
+$(APP_NAME).app: \
+$(APP_NAME).app/Contents/MacOS/$(APP_NAME) \
+$(APP_NAME).app/Contents/Info.plist \
+$(APP_NAME).app/Contents/Frameworks/XADMaster.framework \
+$(APP_NAME).app/Contents/Frameworks/UniversalDetector.framework \
+$(RESOURCE_FILES:%=$(APP_NAME).app/Contents/Resources/%) \
+$(ICON_FILES:%=$(APP_NAME).app/Contents/Resources/%)
+
+$(APP_NAME).app/Contents/MacOS/$(APP_NAME): \
+../XADMaster/XADMaster.framework \
+../UniversalDetector/UniversalDetector.framework \
+$(OBJS)
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	$(LD) $(ALL_LDFLAGS) -o "$@" $(OBJS) $(LIBS)
+
+$(APP_NAME).app/Contents/Info.plist: Info.plist
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	cat "$^" |\
+	perl -pe 's/\$$\{EXECUTABLE_NAME\}/$(subst \,,$(APP_NAME))/sg' |\
+	perl -pe 's/\$$\{PRODUCT_NAME\}/$(subst \,,$(APP_NAME))/sg' |\
+	perl -pe 's/\$$\(PRODUCT_BUNDLE_IDENTIFIER\)/$(APP_IDENTIFIER)/sg' |\
+	perl -pe 's!<string>10.6.0</string>!<string>10.3.9</string>!sg' |\
+	cat >"$@"
+
+$(APP_NAME).app/Contents/Frameworks/XADMaster.framework: ../XADMaster/XADMaster.framework
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	rm -rf "$@"
+	cp -R "$^" "$@"
+
+$(APP_NAME).app/Contents/Frameworks/UniversalDetector.framework: ../UniversalDetector/UniversalDetector.framework
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	rm -rf "$@"
+	cp -R "$^" "$@/"
+
+$(APP_NAME).app/Contents/Resources/%: %
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	cp -R "$^" "$@"
+
+$(APP_NAME).app/Contents/Resources/%: icons/%
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	cp -R "$^" "$@"
+
+$(APP_NAME).app/Contents/Resources/unarchiver.icns: icons/unarchiver-old.icns
+	@mkdir -p "$(subst _,$(empty) $(empty),$(dir $(subst $(empty) $(empty),_,$@)))"
+	cp -R "$^" "$@"
+
+../XADMaster/XADMaster.framework:
+	make -C ../XADMaster -f Makefile.linux
+
+../UniversalDetector/UniversalDetector.framework:
+	make -C ../UniversalDetector -f Makefile.linux
+
+clean:
+	rm -rf $(BUILD_DIR) $(APP_FILES)
+	make -C ../XADMaster -f Makefile.linux clean
+	make -C ../UniversalDetector -f Makefile.linux clean
+
+.PHONY: ../XADMaster/XADMaster.framework \
+../UniversalDetector/UniversalDetector.framework \
+clean
+
+# Suffix rules
+
+.SUFFIXES: .o .c .m .cpp
+
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(ALL_CFLAGS) $(AUTODEPENDENCY_CFLAGS) -c $< -o $@
+	lipo -create $@ $@.ppc -output $@
+
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.m
+	@mkdir -p $(dir $@)
+	$(OBJCC) $(ALL_OBJCFLAGS) $(AUTODEPENDENCY_CFLAGS) -c $< -o $@
+	lipo -create $@ $@.ppc -output $@
+
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(ALL_CXXFLAGS) $(AUTODEPENDENCY_CFLAGS) -c $< -o $@
+	lipo -create $@ $@.ppc -output $@
+
+-include $(OBJS:.o=.d)
